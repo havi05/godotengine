@@ -448,9 +448,13 @@ void ProjectManager::_run_project_confirm() {
 		}
 
 		const String &path = selected_list[i].path;
+		String absolute_path = path;
+		if (absolute_path.is_relative_path()) {
+			absolute_path = OS::get_singleton()->get_executable_path().get_base_dir() + path.trim_prefix(".");
+		}
 
 		// `.substr(6)` on `ProjectSettings::get_singleton()->get_imported_files_path()` strips away the leading "res://".
-		if (!DirAccess::exists(path.path_join(ProjectSettings::get_singleton()->get_imported_files_path().substr(6)))) {
+		if (!DirAccess::exists(absolute_path.path_join(ProjectSettings::get_singleton()->get_imported_files_path().substr(6)))) {
 			_show_error(TTR("Can't run project: Assets need to be imported first.\nPlease edit the project to trigger the initial import."));
 			continue;
 		}
@@ -464,7 +468,7 @@ void ProjectManager::_run_project_confirm() {
 		}
 
 		args.push_back("--path");
-		args.push_back(path);
+		args.push_back(absolute_path);
 
 		Error err = OS::get_singleton()->create_instance(args);
 		ERR_FAIL_COND(err);
@@ -478,11 +482,16 @@ void ProjectManager::_open_selected_projects() {
 
 	const HashSet<String> &selected_list = project_list->get_selected_project_keys();
 	for (const String &path : selected_list) {
-		String conf = path.path_join("project.godot");
+		String absolute_path = path;
+		if (absolute_path.is_relative_path()) {
+			absolute_path = OS::get_singleton()->get_executable_path().get_base_dir() + path.trim_prefix(".");
+		}
+
+		String conf = absolute_path.path_join("project.godot");
 
 		if (!FileAccess::exists(conf)) {
 			loading_label->hide();
-			_show_error(vformat(TTR("Can't open project at '%s'.\nProject file doesn't exist or is inaccessible."), path));
+			_show_error(vformat(TTR("Can't open project at '%s'.\nProject file doesn't exist or is inaccessible."), absolute_path));
 			return;
 		}
 
@@ -495,7 +504,7 @@ void ProjectManager::_open_selected_projects() {
 		}
 
 		args.push_back("--path");
-		args.push_back(path);
+		args.push_back(absolute_path);
 
 		args.push_back("--editor");
 
@@ -506,8 +515,8 @@ void ProjectManager::_open_selected_projects() {
 		Error err = OS::get_singleton()->create_instance(args);
 		if (err != OK) {
 			loading_label->hide();
-			_show_error(vformat(TTR("Can't open project at '%s'.\nFailed to start the editor."), path));
-			ERR_PRINT(vformat("Failed to start an editor instance for the project at '%s', error code %d.", path, err));
+			_show_error(vformat(TTR("Can't open project at '%s'.\nFailed to start the editor."), absolute_path));
+			ERR_PRINT(vformat("Failed to start an editor instance for the project at '%s', error code %d.", absolute_path, err));
 			return;
 		}
 	}
@@ -884,7 +893,10 @@ void ProjectManager::_apply_project_tags() {
 		}
 	}
 
-	const String project_godot = project_list->get_selected_projects()[0].path.path_join("project.godot");
+	String project_godot = project_list->get_selected_projects()[0].path.path_join("project.godot");
+	if (project_godot.is_relative_path()) {
+		project_godot = OS::get_singleton()->get_executable_path().get_base_dir() + project_godot.trim_prefix(".");
+	}
 	ProjectSettings *cfg = memnew(ProjectSettings(project_godot));
 	if (!cfg->is_project_loaded()) {
 		memdelete(cfg);
@@ -999,11 +1011,15 @@ void ProjectManager::_perform_full_project_conversion() {
 	}
 
 	const String &path = selected_list[0].path;
+	String absolute_path = path;
+	if (absolute_path.is_relative_path()) {
+		absolute_path = OS::get_singleton()->get_executable_path().get_base_dir() + path.trim_prefix(".");
+	}
 
 	print_line("Converting project: " + path);
 	List<String> args;
 	args.push_back("--path");
-	args.push_back(path);
+	args.push_back(absolute_path);
 	args.push_back("--convert-3to4");
 	args.push_back("--rendering-driver");
 	args.push_back(Main::get_rendering_driver_name());

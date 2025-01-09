@@ -465,7 +465,12 @@ void ProjectList::save_config() {
 // Load project data from p_property_key and return it in a ProjectList::Item.
 // p_favorite is passed directly into the Item.
 ProjectList::Item ProjectList::load_project_data(const String &p_path, bool p_favorite) {
-	String conf = p_path.path_join("project.godot");
+	String absolute_path = p_path;
+	if (p_path.is_relative_path()) {
+		absolute_path = OS::get_singleton()->get_executable_path().get_base_dir() + p_path.trim_prefix(".");
+	}
+
+	String conf = absolute_path.path_join("project.godot");
 	bool grayed = false;
 	bool missing = false;
 	bool recovery_mode = false;
@@ -496,11 +501,11 @@ ProjectList::Item ProjectList::load_project_data(const String &p_path, bool p_fa
 	String icon = cf->get_value("application", "config/icon", "");
 	if (icon.begins_with("uid://")) {
 		Error err;
-		Ref<FileAccess> file = FileAccess::open(p_path.path_join(".godot/uid_cache.bin"), FileAccess::READ, &err);
+		Ref<FileAccess> file = FileAccess::open(absolute_path.path_join(".godot/uid_cache.bin"), FileAccess::READ, &err);
 		if (err == OK) {
 			icon = ResourceUID::get_path_from_cache(file, icon);
 			if (icon.is_empty()) {
-				WARN_PRINT(vformat("Could not load icon from UID for project at path \"%s\". Make sure UID cache exists.", p_path));
+				WARN_PRINT(vformat("Could not load icon from UID for project at path \"%s\". Make sure UID cache exists.", absolute_path));
 			}
 		}
 	}
@@ -533,7 +538,7 @@ ProjectList::Item ProjectList::load_project_data(const String &p_path, bool p_fa
 		// when editing a project (but not when running it).
 		last_edited = FileAccess::get_modified_time(conf);
 
-		String fscache = p_path.path_join(".fscache");
+		String fscache = absolute_path.path_join(".fscache");
 		if (FileAccess::exists(fscache)) {
 			uint64_t cache_modified = FileAccess::get_modified_time(fscache);
 			if (cache_modified > last_edited) {
@@ -588,7 +593,11 @@ void ProjectList::_load_project_icon(int p_index) {
 	if (!item.icon.is_empty()) {
 		Ref<Image> img;
 		img.instantiate();
-		Error err = img->load(item.icon.replace_first("res://", item.path + "/"));
+		String absolute_path = item.path;
+		if (item.path.is_relative_path()) {
+			absolute_path = OS::get_singleton()->get_executable_path().get_base_dir() + item.path.trim_prefix(".");
+		}
+		Error err = img->load(item.icon.replace_first("res://", absolute_path + "/"));
 		if (err == OK) {
 			img->resize(default_icon->get_width(), default_icon->get_height(), Image::INTERPOLATE_LANCZOS);
 			icon = ImageTexture::create_from_image(img);

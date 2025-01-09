@@ -93,6 +93,12 @@ void ProjectDialog::_validate_path() {
 	String target_path = path;
 	InputType target_path_input_type = PROJECT_PATH;
 
+	if (target_path.is_relative_path()) {
+		_set_message(TTR("The path specified is relative."), MESSAGE_SUCCESS, target_path_input_type);
+		target_path = OS::get_singleton()->get_executable_path().get_base_dir() + target_path;
+		return;
+	}
+
 	if (mode == MODE_IMPORT) {
 		if (path.get_file().strip_edges() == "project.godot") {
 			path = path.get_base_dir();
@@ -167,11 +173,6 @@ void ProjectDialog::_validate_path() {
 			_set_message(TTR("Please choose a \"project.godot\", a directory with one, or a \".zip\" file."), MESSAGE_ERROR);
 			return;
 		}
-	}
-
-	if (target_path.is_relative_path()) {
-		_set_message(TTR("The path specified is invalid."), MESSAGE_ERROR, target_path_input_type);
-		return;
 	}
 
 	if (target_path.get_file() != OS::get_singleton()->get_safe_dir_name(target_path.get_file())) {
@@ -507,6 +508,10 @@ void ProjectDialog::ok_pressed() {
 	}
 
 	String path = project_path->get_text();
+	String relative_path = project_path->get_text();
+	if (path.is_relative_path()) {
+		path = OS::get_singleton()->get_executable_path().get_base_dir() + path.trim_prefix(".");
+	}
 
 	if (mode == MODE_NEW) {
 		if (create_dir->is_pressed()) {
@@ -725,7 +730,7 @@ void ProjectDialog::ok_pressed() {
 
 	hide();
 	if (mode == MODE_NEW || mode == MODE_IMPORT || mode == MODE_INSTALL) {
-		emit_signal(SNAME("project_created"), path, edit_check_box->is_pressed());
+		emit_signal(SNAME("project_created"), relative_path, edit_check_box->is_pressed());
 	} else if (mode == MODE_RENAME) {
 		emit_signal(SNAME("projects_updated"));
 	}
